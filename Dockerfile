@@ -137,8 +137,6 @@ COPY --from=opencl-build /build /build
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP
 RUN git fetch; git checkout 6abd9165e6a99549d413f0b2ad18c3a7e150a426
-#COPY patch/mingw32-freerdp.patch /src/patch/
-#RUN git apply /src/patch/mingw32-freerdp.patch
 WORKDIR /src/FreeRDP/build
 ARG ARCH
 RUN /bin/bash -c "( [[ $ARCH == aarch64 ]] && printf 'arm64' || printf $ARCH ) > arch.txt"
