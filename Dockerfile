@@ -134,14 +134,12 @@ COPY --from=libusb-build /build /build
 COPY --from=faac-build /build /build
 COPY --from=faad2-build /build /build
 COPY --from=opencl-build /build /build
-ARG ARCH
-RUN /bin/bash -c "( [[ $ARCH == aarch64 ]] && printf 'arm64' || printf $ARCH ) > /build/arch.txt"
-
-RUN apt update -qq; apt install rsync -y;
-
-RUN ls; git clone https://github.com/FreeRDP/FreeRDP.git /src/FreeRDP
+RUN git clone https://github.com/FreeRDP/FreeRDP.git /src/FreeRDP
 RUN mkdir /src/FreeRDP/build
 WORKDIR /src/FreeRDP/build
+
+ARG ARCH
+RUN /bin/bash -c "( [[ $ARCH == aarch64 ]] && printf 'arm64' || printf $ARCH ) > arch.txt"
 
 RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
              -DWITH_X11=OFF -DWITH_MEDIA_FOUNDATION=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
@@ -154,7 +152,7 @@ RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev 
              -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=ON -DWITH_PROGRESS_BAR=OFF \
              -DWITH_FAAD2=ON -DFAAD2_INCLUDE_DIR=/build/include -DFAAD2_LIBRARY=/build/lib/libfaad.a \
              -DWITH_FAAC=ON -DFAAC_INCLUDE_DIR=/build/include -DFAAC_LIBRARY=/build/lib/libfaac.a \
-						 -DCMAKE_SYSTEM_PROCESSOR=$( cat /build/arch.txt ) \
+						 -DCMAKE_SYSTEM_PROCESSOR=$( cat arch.txt ) \
              -DCMAKE_C_FLAGS=\"${CMAKE_C_FLAGS} -static -Wno-error=incompatible-function-pointer-types -DERROR_OPERATION_IN_PROGRESS=0x00000149\" \
 						 "
 RUN cmake --build . -j `nproc`
