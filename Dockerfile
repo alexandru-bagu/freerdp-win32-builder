@@ -135,18 +135,9 @@ COPY --from=faac-build /build /build
 COPY --from=faad2-build /build /build
 COPY --from=opencl-build /build /build
 RUN mkdir /src/FreeRDP/build
-WORKDIR /src/FreeRDP
-RUN git fetch; git checkout 6abd9165e6a99549d413f0b2ad18c3a7e150a426
 WORKDIR /src/FreeRDP/build
 ARG ARCH
 RUN /bin/bash -c "( [[ $ARCH == aarch64 ]] && printf 'arm64' || printf $ARCH ) > arch.txt"
-
-RUN sed -i 's/(\*fkt)(void\*)/(*fkt)(int,const char*,void*)/g' /src/FreeRDP/libfreerdp/utils/signal.c
-RUN sed -i 's/#ifndef __MINGW32__/#ifndef __MINGW32__BAD/g' /src/FreeRDP/include/freerdp/codec/audio.h
-RUN sed -i 's/freerdp_library_add(Credui)/freerdp_library_add(credui)/g' ../libfreerdp/utils/CMakeLists.txt
-RUN sed -i 's/if(WIN32)/if(WIN32)\n\tfreerdp_library_add(cfgmgr32)/g' ../libfreerdp/utils/CMakeLists.txt
-#RUN sed -i 's/#define winpr_aligned_calloc/#define winpr_aligned_calloc_wronglocation/' ../winpr/include/winpr/crt.h
-#RUN sed -i 's/#endif \/\* WINPR_CRT_H \*\//#ifndef _WIN32\n#define winpr_aligned_calloc(count, size, alignment) _aligned_recalloc ( NULL , count, size, alignment )\n#endif\n#endif/' ../winpr/include/winpr/crt.h
 
 RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
              -DWITH_X11=OFF -DWITH_MEDIA_FOUNDATION=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
