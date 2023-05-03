@@ -5,6 +5,7 @@ RUN apt-get install -y xz-utils wget make nasm git ninja-build autoconf automake
 
 # SETUP WORKSPACE
 WORKDIR /tmp
+# RUN wget https://github.com/mstorsjo/llvm-mingw/releases/download/20230320/llvm-mingw-20230320-ucrt-ubuntu-18.04-x86_64.tar.xz -O llvm.tar.xz && \
 RUN wget https://github.com/mstorsjo/llvm-mingw/releases/download/20230320/llvm-mingw-20230320-msvcrt-ubuntu-18.04-x86_64.tar.xz -O llvm.tar.xz && \
   tar -xf llvm.tar.xz && \
   cp -a /tmp/llvm-mingw-20230320-msvcrt-ubuntu-18.04-x86_64/* /usr/ && \
@@ -126,7 +127,6 @@ RUN cmake --install .
 
 # BUILD FREERDP
 FROM cmake-builder AS freerdp-build
-RUN git clone https://github.com/FreeRDP/FreeRDP.git /src/FreeRDP
 COPY --from=zlib-build /build /build
 COPY --from=openssl-build /build /build
 COPY --from=openh264-build /build /build
@@ -134,19 +134,14 @@ COPY --from=libusb-build /build /build
 COPY --from=faac-build /build /build
 COPY --from=faad2-build /build /build
 COPY --from=opencl-build /build /build
-RUN mkdir /src/FreeRDP/build
-WORKDIR /src/FreeRDP
-RUN git fetch; git checkout 6abd9165e6a99549d413f0b2ad18c3a7e150a426
-WORKDIR /src/FreeRDP/build
 ARG ARCH
-RUN /bin/bash -c "( [[ $ARCH == aarch64 ]] && printf 'arm64' || printf $ARCH ) > arch.txt"
+RUN /bin/bash -c "( [[ $ARCH == aarch64 ]] && printf 'arm64' || printf $ARCH ) > /build/arch.txt"
 
-RUN sed -i 's/(\*fkt)(void\*)/(*fkt)(int,const char*,void*)/g' /src/FreeRDP/libfreerdp/utils/signal.c
-RUN sed -i 's/#ifndef __MINGW32__/#ifndef __MINGW32__BAD/g' /src/FreeRDP/include/freerdp/codec/audio.h
-RUN sed -i 's/freerdp_library_add(Credui)/freerdp_library_add(credui)/g' ../libfreerdp/utils/CMakeLists.txt
-RUN sed -i 's/if(WIN32)/if(WIN32)\n\tfreerdp_library_add(cfgmgr32)/g' ../libfreerdp/utils/CMakeLists.txt
-RUN sed -i 's/#define winpr_aligned_calloc/#define winpr_aligned_calloc_wronglocation/' ../winpr/include/winpr/crt.h
-RUN sed -i 's/#endif \/\* WINPR_CRT_H \*\//#ifndef _WIN32\n#define winpr_aligned_calloc(count, size, alignment) _aligned_recalloc ( NULL , count, size, alignment )\n#endif\n#endif/' ../winpr/include/winpr/crt.h
+RUN apt update -qq; apt install rsync -y;
+
+RUN ls; git clone https://github.com/FreeRDP/FreeRDP.git /src/FreeRDP
+RUN mkdir /src/FreeRDP/build
+WORKDIR /src/FreeRDP/build
 
 RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev -DCMAKE_INSTALL_PREFIX=/build \
              -DWITH_X11=OFF -DWITH_MEDIA_FOUNDATION=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
@@ -159,7 +154,7 @@ RUN bash -c "cmake .. -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_CMAKE -G Ninja -Wno-dev 
              -DWITH_WINPR_TOOLS=OFF -DWITH_WIN_CONSOLE=ON -DWITH_PROGRESS_BAR=OFF \
              -DWITH_FAAD2=ON -DFAAD2_INCLUDE_DIR=/build/include -DFAAD2_LIBRARY=/build/lib/libfaad.a \
              -DWITH_FAAC=ON -DFAAC_INCLUDE_DIR=/build/include -DFAAC_LIBRARY=/build/lib/libfaac.a \
-						 -DCMAKE_SYSTEM_PROCESSOR=$( cat arch.txt ) \
+						 -DCMAKE_SYSTEM_PROCESSOR=$( cat /build/arch.txt ) \
              -DCMAKE_C_FLAGS=\"${CMAKE_C_FLAGS} -static -Wno-error=incompatible-function-pointer-types -DERROR_OPERATION_IN_PROGRESS=0x00000149\" \
 						 "
 RUN cmake --build . -j `nproc`

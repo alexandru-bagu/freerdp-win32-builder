@@ -1,7 +1,18 @@
 version: '3'
 
 services:
-  builder:
+  dev-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ARCH: x86_64
+    volumes:
+     - ./src:/src-dev
+    command: bash -c "rsync -avz /src/. /src-dev; bash"
+    stdin_open: true 
+    tty: true
+  dist-builder:
     image: win32-builder
     volumes:
      - ./build:/out
